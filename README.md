@@ -36,7 +36,7 @@ Interactive docs: `/docs`. If `FLOWFORGE_API_KEY` is set, send `X-API-Key`.
 Ownership authority is the task hash (`state=running` + `fence`), not the lease key: an expired lease only *permits*
 recovery. A slow worker that finishes before recovery runs commits safely; after takeover it is rejected.
 
-## Delivery semantics (be honest in interviews)
+## Delivery semantics 
 At-least-once. A task can execute twice (e.g. worker killed after a side effect but before completing); only one
 result is ever committed. Handlers with external side effects must be idempotent — e.g. `database_upsert` keys on a
 stable id so retries and replays overwrite rather than duplicate.
