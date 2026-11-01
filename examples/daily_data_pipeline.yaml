@@ -1,0 +1,39 @@
+name: daily_book_pipeline
+schedule: "0 8 * * *"
+
+concurrency:
+  max_runs: 1
+  on_overlap: skip
+
+tasks:
+  - id: fetch_books
+    type: http_fetch
+    config:
+      url: "https://example.com/api/books"
+    retries:
+      max_attempts: 3
+      backoff: exponential
+    timeout_seconds: 30
+
+  - id: validate_books
+    type: validate_records
+    depends_on: [fetch_books]
+    config:
+      required_fields: [id, title]
+      max_reject_ratio: 0.5
+
+  - id: save_books
+    type: database_upsert
+    depends_on: [validate_books]
+    config:
+      key_field: id
+
+  - id: generate_report
+    type: report_generation
+    depends_on: [save_books, validate_books]
+
+  - id: notify_done
+    type: notify
+    depends_on: [generate_report]
+    config:
+      message: "daily book pipeline finished"

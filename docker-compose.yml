@@ -1,0 +1,49 @@
+# docker compose up --build --scale worker=3
+x-env: &env
+  FLOWFORGE_REDIS_URL: redis://redis:6379/0
+  FLOWFORGE_DATABASE_URL: postgresql+psycopg://flowforge:${POSTGRES_PASSWORD:-flowforge}@postgres:5432/flowforge
+  FLOWFORGE_LEASE_TTL_S: "30"
+  FLOWFORGE_API_KEY: ${FLOWFORGE_API_KEY:-}
+  FLOWFORGE_ALLOWED_HTTP_HOSTS: ${FLOWFORGE_ALLOWED_HTTP_HOSTS:-}
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]   # AOF: queue/leases survive a Redis restart
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10}
+    volumes: ["redisdata:/data"]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: flowforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flowforge}
+      POSTGRES_DB: flowforge
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U flowforge"], interval: 5s, timeout: 3s, retries: 10}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+
+  api:
+    build: .
+    environment: {<<: *env, FLOWFORGE_ENABLE_SCHEDULER: "true"}
+    ports: ["8000:8000"]
+    depends_on: {redis: {condition: service_healthy}, postgres: {condition: service_healthy}}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.workers.worker"]
+    environment: {<<: *env, FLOWFORGE_METRICS_PORT: "9100", FLOWFORGE_WORKER_CONCURRENCY: "2"}
+    depends_on: {api: {condition: service_healthy}}
+    deploy: {replicas: 2}
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+    depends_on: [api]
+
+volumes: {redisdata: {}, pgdata: {}}

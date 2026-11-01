@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: flowforge
+Version: 0.1.0
+Summary: Distributed Python workflow automation engine (FastAPI + Redis + PostgreSQL)
+Requires-Python: >=3.11
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn>=0.29
+Requires-Dist: redis>=5.0
+Requires-Dist: pydantic>=2.6
+Requires-Dist: httpx>=0.27
+Requires-Dist: sqlalchemy>=2.0
+Requires-Dist: psycopg[binary]>=3.1
+Requires-Dist: apscheduler<4,>=3.10
+Requires-Dist: prometheus-client>=0.20
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-timeout>=2; extra == "dev"
